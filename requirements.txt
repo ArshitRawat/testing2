@@ -1,0 +1,7 @@
+Flask
+selenium
+pillow
+pytesseract
+pandas
+requests
+openpyxl
