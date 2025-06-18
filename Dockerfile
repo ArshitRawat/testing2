@@ -1,16 +1,33 @@
 FROM python:3.10-slim
 
-# Install Chrome, Chromedriver, and Tesseract
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CHROME_BIN=/usr/bin/google-chrome
+ENV CHROMEDRIVER=/usr/bin/chromedriver
+ENV TESSERACT_CMD=/usr/bin/tesseract
+
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    wget curl gnupg unzip fonts-liberation tesseract-ocr \
-    libnss3 libxss1 libappindicator3-1 libasound2 \
-    libatk-bridge2.0-0 libgtk-3-0 libgbm1 \
+    wget \
+    gnupg \
+    unzip \
+    curl \
+    fonts-liberation \
+    libnss3 \
+    libxss1 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    libgbm1 \
+    libu2f-udev \
+    tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Chrome manually
-RUN wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
-    apt install -y /tmp/chrome.deb && \
-    rm /tmp/chrome.deb
+# Add Google Chrome repo and install
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > /etc/apt/trusted.gpg.d/google.gpg && \
+    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list && \
+    apt-get update && apt-get install -y google-chrome-stable && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install matching ChromeDriver
 RUN CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d '.' -f 1) && \
@@ -19,18 +36,15 @@ RUN CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d '.' -f 
     unzip chromedriver_linux64.zip && mv chromedriver /usr/bin/chromedriver && chmod +x /usr/bin/chromedriver && \
     rm chromedriver_linux64.zip
 
-# Set environment variables
-ENV CHROME_BIN=/usr/bin/google-chrome
-ENV CHROMEDRIVER=/usr/bin/chromedriver
-ENV TESSERACT_CMD=/usr/bin/tesseract
-
-# Set workdir and copy code
+# Set working directory and copy app
 WORKDIR /app
 COPY . /app
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose port and run
+# Expose port
 EXPOSE 8080
+
+# Run the Flask app
 CMD ["python", "rgpv_scraper.py"]
